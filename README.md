@@ -9,7 +9,7 @@ source venv/bin/activate
 
 2- Install packages
 
-pip3 install streamlit pandas dotenv youtube_agent pytube pydub openai httpx yt-dlp torch
+pip3 install streamlit pandas dotenv youtube_agent pytube pydub openai httpx yt-dlp torch openai-whisper
 
 3- Launch the application locally
 
