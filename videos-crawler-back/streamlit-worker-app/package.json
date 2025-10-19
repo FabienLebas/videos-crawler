@@ -1,0 +1,18 @@
+{
+  "name": "streamlit-worker-app",
+  "version": "1.0.0",
+  "description": "A Streamlit application with a persistent worker for task execution.",
+  "main": "src/streamlit_app.py",
+  "scripts": {
+    "start": "streamlit run src/streamlit_app.py",
+    "worker": "caffeinate python src/worker.py"
+  },
+  "dependencies": {
+    "axios": "^0.21.1"
+  },
+  "devDependencies": {
+    "typescript": "^4.1.2"
+  },
+  "author": "",
+  "license": "ISC"
+}
