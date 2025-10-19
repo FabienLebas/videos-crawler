@@ -1,0 +1,7 @@
+streamlit
+pandas
+numpy
+requests
+streamlit-ace
+flask
+flask-socketio
