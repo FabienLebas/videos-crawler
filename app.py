@@ -15,8 +15,27 @@ from youtube_agent import (
     get_average_processing_speed,
     TRANSCRIPTIONS_DIR
 )
+import json
 from pathlib import Path
-from pytube import YouTube
+
+QUEUE_FILE = Path("jobs_queue.json")
+
+def enqueue_jobs(video_urls, keywords, whisper_model):
+    # Charger la file existante ou créer une nouvelle
+    try:
+        queue = json.loads(QUEUE_FILE.read_text(encoding="utf-8")) if QUEUE_FILE.exists() else []
+    except Exception:
+        queue = []
+    for url in video_urls:
+        job = {
+            "url": url,
+            "keywords": keywords,
+            "model": whisper_model,
+            "status": "pending",
+            "created_at": time.time()
+        }
+        queue.append(job)
+    QUEUE_FILE.write_text(json.dumps(queue, ensure_ascii=False, indent=2), encoding="utf-8")
 
 st.set_page_config(page_title="Agent d'Analyse YouTube", layout="wide")
 
@@ -191,90 +210,6 @@ if st.session_state.video_df is not None:
         else:
             video_urls_to_analyze = selected_videos['url'].tolist()
             keywords = [keyword.strip() for keyword in keywords_input.split(',')]
-
-            st.session_state.analysis_running = True
-            st.session_state.stop_analysis = False
-
-            st.info(f"Lancement de l'analyse sur {len(video_urls_to_analyze)} vidéo(s)...")
-            
-            # Conteneurs pour les mises à jour en temps réel
-            progress_container = st.container()
-            status_container = st.container()
-            time_container = st.container()
-            results_container = st.container()
-
-            progress_bar = progress_container.progress(0.0)
-            status_text = status_container.empty()
-            time_text = time_container.empty()
-            current_progress = [0.0]  # Utiliser une liste pour modifier dans la closure
-            analysis_start_time = [time.time()]  # Temps de démarrage
-            videos_completed = [0]  # Nombre de vidéos complétées
-
-            def update_progress(text):
-                if st.session_state.stop_analysis:
-                    return False  # Signaler l'arrêt
-                status_text.markdown(f"**{text}**")
-                # Incrémenter légèrement la progression à chaque appel
-                current_progress[0] = min(current_progress[0] + 0.01, 0.99)
-                progress_bar.progress(current_progress[0])
-                
-                # Déterminer si une vidéo a été complétée (texte contient "✅")
-                if "✅" in text and "complétée" in text:
-                    videos_completed[0] += 1
-                
-                # Calculer le temps écoulé et le temps restant estimé
-                elapsed_time = time.time() - analysis_start_time[0]
-                if videos_completed[0] > 0 and len(video_urls_to_analyze) > 0:
-                    time_per_video = elapsed_time / videos_completed[0]
-                    remaining_videos = len(video_urls_to_analyze) - videos_completed[0]
-                    remaining_time = time_per_video * remaining_videos
-                    time_text.info(f"⏱️ Temps écoulé : {format_time(elapsed_time)} | Temps restant estimé : {format_time(remaining_time)}")
-                
-                return True  # Continuer
-
-            try:
-                results = run_full_analysis(
-                    video_urls_to_analyze, 
-                    keywords, 
-                    whisper_model, 
-                    update_progress,
-                    st.session_state.stop_analysis
-                )
-
-                if st.session_state.stop_analysis:
-                    st.warning("⏹️ Analyse interrompue par l'utilisateur.")
-                else:
-                    progress_bar.progress(1.0)
-                    status_text.success("✅ Analyse terminée !")
-                    
-                    st.header("📊 Rapport d'Analyse")
-
-                    if results:
-                        col1, col2 = st.columns(2)
-                        col1.metric("Nombre de vidéos analysées", results['total_videos'])
-                        col2.metric("Total des occurrences trouvées", results['total_occurrences'])
-
-                        st.subheader("Détails par mot-clé")
-
-                        if results['total_occurrences'] == 0:
-                            st.info("Aucune occurrence des mots-clés spécifiés n'a été trouvée.")
-                        else:
-                            for keyword in keywords:
-                                hits = results['details'].get(keyword, [])
-                                with st.expander(f"'{keyword}' - {len(hits)} vidéo(s) correspondante(s)"):
-                                    if hits:
-                                        for title, url, count in hits:
-                                            st.markdown(f"**{title}**")
-                                            st.markdown(f" - **Occurrences :** {count}")
-                                            st.markdown(f" - **URL :** [{url}]({url})")
-                                    else:
-                                        st.write("Aucune occurrence trouvée pour ce mot-clé.")
-                    else:
-                        st.error("L'analyse n'a retourné aucun résultat.")
-
-            except Exception as e:
-                st.error(f"Une erreur critique est survenue durant l'analyse : {e}")
-            
-            finally:
-                st.session_state.analysis_running = False
-                st.session_state.stop_analysis = False
+            enqueue_jobs(video_urls_to_analyze, keywords, whisper_model)
+            st.success(f"{len(video_urls_to_analyze)} vidéo(s) ajoutée(s) à la file d'attente.")
+            st.info("Lancez le worker en arrière-plan pour traiter la file :\n`caffeinate -i python3 youtube_worker.py`")
