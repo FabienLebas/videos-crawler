@@ -14,3 +14,13 @@ pip3 install streamlit pandas dotenv youtube_agent pytube pydub openai httpx yt-
 3- Launch the application locally
 
 streamlit run app.py
+
+You will search for a Youtube account and it will retrieve the list of videos. You can select those you want to transcript. 
+
+4- Transcript with Whisper
+
+Launch the process and it will go through all videos and record the text in a file.
+
+caffeinate -i python3 youtube_worker.py
+
+
